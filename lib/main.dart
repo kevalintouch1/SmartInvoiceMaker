@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:smartinvoicemaker/invoicecreate.dart';
 
 void main() {
@@ -33,6 +34,23 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+
+  void requestPermissions() async {
+    PermissionStatus status = await Permission.storage.request();
+    if (status.isGranted) {
+      // Permission granted, you can proceed with your code.
+    } else {
+      // Permission denied, handle accordingly (show a message, ask again, etc.).
+    }
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    requestPermissions();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
