@@ -50,9 +50,9 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
   TextEditingController subtotalController = TextEditingController();
   late String subtotal = '00';
   TextEditingController discountController = TextEditingController();
-  late String discount = '00%';
+  late String discount = '00';
   TextEditingController taxController = TextEditingController();
-  late String tax = '00%';
+  late String tax = '00';
   TextEditingController shippingController = TextEditingController();
   late String shipping = '00';
   TextEditingController totalController = TextEditingController();
@@ -67,12 +67,19 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
   DateTime selectedDueDate = DateTime.now();
   List<Item> itemList = [];
   late String _pdfPath;
+  late double subTotal = 0.0;
+  late double discounts = 0.0;
+  late double taxTotal = 0.0;
+  late double totalAmount = 0.0;
+  late double paidAmount = 0.0;
+  late double balanceDues = 0.0;
 
   @override
   void initState() {
     super.initState();
     selectedCurrency = 'US Dollar';
     loadImagePathFromPreferences();
+    loadItems();
   }
 
   @override
@@ -130,7 +137,7 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                           child: TextField(
                             keyboardType: TextInputType.number,
                             textAlign: TextAlign.right,
-                            decoration: customTextFieldDecoration('#1'),
+                            decoration: customTextFieldDecoration('#1', '#1'),
                             controller: invoiceNoController,
                             onChanged: (text) {
                               setState(() {
@@ -164,7 +171,8 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
               const SizedBox(height: 20),
               TextField(
                 keyboardType: TextInputType.text,
-                decoration: customTextFieldDecoration('Payment Terms'),
+                decoration:
+                    customTextFieldDecoration('Payment Terms', 'Payment Terms'),
                 controller: paymentTermsController,
                 onChanged: (text) {
                   setState(() {
@@ -191,7 +199,8 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                             fontSize: 16.0,
                             color: Colors.black,
                           ),
-                          decoration: customTextFieldDecoration('Invoice Date'),
+                          decoration:
+                              customTextFieldDecoration('Invoice Date', ''),
                         ),
                       ),
                     ),
@@ -212,7 +221,7 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                             fontSize: 16.0,
                             color: Colors.black,
                           ),
-                          decoration: customTextFieldDecoration('Due Date'),
+                          decoration: customTextFieldDecoration('Due Date', ''),
                         ),
                       ),
                     ),
@@ -222,7 +231,7 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
               const SizedBox(height: 10),
               TextField(
                 keyboardType: TextInputType.number,
-                decoration: customTextFieldDecoration('PO Number'),
+                decoration: customTextFieldDecoration('PO Number', 'PO Number'),
                 controller: poNumerController,
                 onChanged: (text) {
                   setState(() {
@@ -240,6 +249,7 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
               TextField(
                 keyboardType: TextInputType.text,
                 decoration: customTextFieldDecoration(
+                    'Who is this invoice from?(required)',
                     'Who is this invoice from?(required)'),
                 controller: invoiceFromController,
                 onChanged: (text) {
@@ -252,6 +262,7 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
               TextField(
                 keyboardType: TextInputType.text,
                 decoration: customTextFieldDecoration(
+                    'Who is this invoice to?(required)',
                     'Who is this invoice to?(required)'),
                 controller: billToController,
                 onChanged: (text) {
@@ -263,7 +274,8 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
               const SizedBox(height: 10),
               TextField(
                 keyboardType: TextInputType.text,
-                decoration: customTextFieldDecoration('Ship to (Optional)'),
+                decoration: customTextFieldDecoration(
+                    'Ship to (Optional)', 'Ship to (Optional)'),
                 controller: shipToController,
                 onChanged: (text) {
                   setState(() {
@@ -305,6 +317,9 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                   ),
                 ],
               ),
+              Text('                                                      * ${items.length} Item Added Already',
+                style: const TextStyle(fontSize: 12.0, color: Colors.grey, decoration: TextDecoration.none,),
+                textAlign: TextAlign.right,),
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -312,11 +327,13 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                   Expanded(
                     child: TextField(
                       keyboardType: TextInputType.number,
-                      decoration: customTextFieldDecoration('Shipping Charge'),
+                      decoration:
+                          customTextFieldDecoration(shipping, 'shipping'),
                       controller: shippingController,
                       onChanged: (text) {
                         setState(() {
                           shipping = text;
+                          refreshData();
                         });
                       },
                     ),
@@ -325,11 +342,13 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                   Expanded(
                     child: TextField(
                       keyboardType: TextInputType.number,
-                      decoration: customTextFieldDecoration('Amount Paid'),
+                      decoration:
+                          customTextFieldDecoration(amountPaid, 'amountPaid'),
                       controller: amountPaidController,
                       onChanged: (text) {
                         setState(() {
                           amountPaid = text;
+                          refreshData();
                         });
                       },
                     ),
@@ -343,11 +362,12 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                   Expanded(
                     child: TextField(
                       keyboardType: TextInputType.number,
-                      decoration: customTextFieldDecoration('Tax %'),
+                      decoration: customTextFieldDecoration('Tax %', 'Tax'),
                       controller: taxController,
                       onChanged: (text) {
                         setState(() {
                           tax = text;
+                          refreshData();
                         });
                       },
                     ),
@@ -356,11 +376,13 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                   Expanded(
                     child: TextField(
                       keyboardType: TextInputType.number,
-                      decoration: customTextFieldDecoration('Discount %'),
+                      decoration:
+                          customTextFieldDecoration('Discount %', 'Discount'),
                       controller: discountController,
                       onChanged: (text) {
                         setState(() {
                           discount = text;
+                          refreshData();
                         });
                       },
                     ),
@@ -368,40 +390,64 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                 ],
               ),
               const SizedBox(height: 10),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                      child: Text(
+                        'Balance Due',
+                        style: TextStyle(fontSize: 16.0),
+                      )),
+                  SizedBox(height: 15),
+                  Expanded(
+                      child: Text(
+                        'Total',
+                        style: TextStyle(fontSize: 16.0),
+                      ),),
+                ],
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Expanded(
-                    child: TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: customTextFieldDecoration('Balance Due'),
-                      controller: balanceDueController,
-                      onChanged: (text) {
-                        setState(() {
-                          balanceDue = text;
-                        });
-                      },
+                      child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 8.0, horizontal: 16.0),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.grey,
+                        width: 1.0,
+                      ),
+                      borderRadius: BorderRadius.circular(16.0),
                     ),
-                  ),
+                    child: Text(
+                      '$balanceDues',
+                      style: const TextStyle(fontSize: 16.0),
+                    ),
+                  )),
                   const SizedBox(height: 15),
                   Expanded(
-                    child: TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: customTextFieldDecoration('Total'),
-                      controller: totalController,
-                      onChanged: (text) {
-                        setState(() {
-                          total = text;
-                        });
-                      },
+                      child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 8.0, horizontal: 16.0),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.grey,
+                        width: 1.0,
+                      ),
+                      borderRadius: BorderRadius.circular(16.0),
                     ),
-                  ),
+                    child: Text(
+                      '$totalAmount',
+                      style: const TextStyle(fontSize: 16.0),
+                    ),
+                  )),
                 ],
               ),
               const SizedBox(height: 10),
               TextField(
                 keyboardType: TextInputType.text,
-                decoration: customTextFieldDecoration('Notes:'),
+                decoration: customTextFieldDecoration('Notes:', 'Notes'),
                 controller: notesController,
                 onChanged: (text) {
                   setState(() {
@@ -412,7 +458,8 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
               const SizedBox(height: 10),
               TextField(
                 keyboardType: TextInputType.text,
-                decoration: customTextFieldDecoration('Terms & Condition'),
+                decoration:
+                    customTextFieldDecoration('Terms & Condition', 'Terms'),
                 controller: termsController,
                 onChanged: (text) {
                   setState(() {
@@ -427,9 +474,10 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
     );
   }
 
-  InputDecoration customTextFieldDecoration(String labelText) {
+  InputDecoration customTextFieldDecoration(String hintText, String labelText) {
     return InputDecoration(
       labelText: labelText,
+      // hintText: hintText,
       labelStyle: const TextStyle(color: Colors.black, fontSize: 16.0),
       contentPadding: const EdgeInsets.all(15.0),
       border: OutlineInputBorder(
@@ -495,6 +543,24 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
         selectedDueDate = pickedDate;
       });
     }
+  }
+
+  List<Map<String, dynamic>> items = [];
+
+  Future<void> loadItems() async {
+    Database db = await DatabaseHelper.instance.database;
+    List<Map<String, dynamic>> itemList = await db.query('items');
+
+    setState(() {
+      items = itemList;
+    });
+
+    for (var index = 0; index < items.length; index++) {
+      subTotal = items[index]['total'] + subTotal;
+    }
+
+    print(">> $subTotal");
+    refreshData();
   }
 
   Future<void> _showAddItemDialog(BuildContext context) async {
@@ -591,6 +657,7 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
   }
 
   Future<void> _generatePdf() async {
+    loadItems();
     final pdf = pw.Document();
     pw.TextStyle textStyle1 = pw.TextStyle(
       fontSize: 12,
@@ -602,7 +669,7 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
     );
     pw.TextStyle textStyle3 = pw.TextStyle(
       fontSize: 12,
-      color: PdfColor.fromHex('#000000'),
+      color: PdfColor.fromHex('#FFFFFF'),
     );
     pdf.addPage(
       pw.Page(
@@ -614,15 +681,15 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
               top: 0,
               child: pw.Image(
                 pw.MemoryImage(File(imagePath).readAsBytesSync()),
-                width: 100, // Set the desired width
-                height: 100, // Set the desired height
+                width: 80, // Set the desired width
+                height: 80, // Set the desired height
               ),
             ),
 
             // Column for text below image
             pw.Positioned(
               left: 0,
-              top: 110,
+              top: 90,
               // Adjust the top position based on your image height
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -639,18 +706,18 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
             // Text "INVOICE" in the exact right top corner
             pw.Positioned(
               right: 0,
-              top: 0,
+              top: 30,
               child: pw.Text(
                 'INVOICE',
                 style:
-                    pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 20),
+                    pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 30),
               ),
             ),
 
             // Column for text below "INVOICE"
             pw.Positioned(
               right: 0,
-              top: 30,
+              top: 70,
               // Adjust the top position based on your "INVOICE" text size
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -667,7 +734,7 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
             // Table of 4 items
             pw.Positioned(
                 left: 0,
-                top: 150,
+                top: 120,
                 // Adjust the top position based on your text below "INVOICE"
                 child: pw.Center(
                   child: pw.Container(
@@ -676,6 +743,7 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                           crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                           children: [
                             pw.Table(
+                              // border: pw.TableBorder.all(width: 1.0, color: PdfColor.fromHex('#000000')),
                               children: [
                                 pw.TableRow(
                                   children: [
@@ -793,24 +861,309 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
                                       padding: const pw.EdgeInsets.all(8.0),
                                       child: pw.Text('', style: textStyle1),
                                     ),
-                                    pw.Padding(
+                                    pw.Container(
+                                      color: PdfColor.fromHex('#d5d5d5'),
                                       padding: const pw.EdgeInsets.all(8.0),
-                                      child: pw.Container(
-                                        color: PdfColor.fromHex('#d5d5d5'),
-                                        child: pw.Text('Balance Due:',
+                                      // Add padding here
+                                      child: pw.Text('Balance Due:',
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                    pw.Container(
+                                      color: PdfColor.fromHex('#d5d5d5'),
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      // Add padding here
+                                      child: pw.Text(' $balanceDue',
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            pw.SizedBox(height: 10.0),
+                            pw.Table(
+                              children: [
+                                pw.TableRow(
+                                  decoration: pw.BoxDecoration(
+                                      color: PdfColor.fromHex('#373737')),
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('No.',
+                                          style: textStyle3,
+                                          textAlign: pw.TextAlign.left),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Item',
+                                          style: textStyle3,
+                                          textAlign: pw.TextAlign.left),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Quantity',
+                                          style: textStyle3,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Rate',
+                                          style: textStyle3,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Total',
+                                          style: textStyle3,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                  ],
+                                ),
+                                for (var index = 0;
+                                    index < items.length;
+                                    index++)
+                                  pw.TableRow(
+                                    children: [
+                                      pw.Container(
+                                        padding: const pw.EdgeInsets.all(8.0),
+                                        child: pw.Text('${index + 1}',
+                                            style: textStyle1),
+                                      ),
+                                      pw.Container(
+                                        padding: const pw.EdgeInsets.all(8.0),
+                                        child: pw.Text(
+                                            items[index]['name'].toString(),
+                                            style: textStyle1),
+                                      ),
+                                      pw.Container(
+                                        padding: const pw.EdgeInsets.all(8.0),
+                                        child: pw.Text(
+                                            items[index]['quantity'].toString(),
                                             style: textStyle1,
                                             textAlign: pw.TextAlign.right),
                                       ),
-                                    ),
-                                    pw.Padding(
-                                      padding: const pw.EdgeInsets.all(8.0),
-                                      child: pw.Container(
-                                        color: PdfColor.fromHex('#d5d5d5'),
-                                        child: pw.Text(' $balanceDue',
+                                      pw.Container(
+                                        padding: const pw.EdgeInsets.all(8.0),
+                                        child: pw.Text(
+                                            items[index]['price'].toString(),
                                             style: textStyle1,
                                             textAlign: pw.TextAlign.right),
                                       ),
+                                      pw.Container(
+                                        padding: const pw.EdgeInsets.all(8.0),
+                                        child: pw.Text(
+                                            (items[index]['quantity'] *
+                                                    items[index]['price'])
+                                                .toString(),
+                                            style: textStyle1,
+                                            textAlign: pw.TextAlign.right),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                            pw.SizedBox(height: 10.0),
+                            pw.Table(
+                              // border: pw.TableBorder.all(
+                              //     width: 1.0,
+                              //     color: PdfColor.fromHex('#000000')),
+                              columnWidths: {
+                                0: const pw.FixedColumnWidth(50),
+                                1: const pw.FixedColumnWidth(50),
+                                2: const pw.FixedColumnWidth(80),
+                                3: const pw.FixedColumnWidth(80),
+                              },
+                              children: [
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
                                     ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Subtotal:',
+                                          style: textStyle2,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('$subTotal',
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                  ],
+                                ),
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Discount',
+                                          style: textStyle2,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('$discounts',
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                  ],
+                                ),
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Tax',
+                                          style: textStyle2,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('$taxTotal',
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                  ],
+                                ),
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Shipping:',
+                                          style: textStyle2,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text(shipping,
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                  ],
+                                ),
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Total: ',
+                                          style: textStyle2,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('$totalAmount',
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                  ],
+                                ),
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('', style: textStyle2),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('Amount Paid: ',
+                                          style: textStyle2,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(8.0),
+                                      child: pw.Text('$paidAmount',
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.right),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            pw.Table(
+                              // border: pw.TableBorder.all(
+                              //     width: 1.0,
+                              //     color: PdfColor.fromHex('#000000')),
+                              children: [
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(5.0),
+                                      child: pw.Text('Notes:',
+                                          style: textStyle2,
+                                          textAlign: pw.TextAlign.left),
+                                    )
+                                  ],
+                                ),
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(5.0),
+                                      child: pw.Text(notes,
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.left),
+                                    )
+                                  ],
+                                ),
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(5.0),
+                                      child: pw.Text('Terms:',
+                                          style: textStyle2,
+                                          textAlign: pw.TextAlign.left),
+                                    )
+                                  ],
+                                ),
+                                pw.TableRow(
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.all(5.0),
+                                      child: pw.Text(terms,
+                                          style: textStyle1,
+                                          textAlign: pw.TextAlign.left),
+                                    )
                                   ],
                                 ),
                               ],
@@ -850,5 +1203,39 @@ class _InvoiceCreationPageState extends State<InvoiceCreationPage> {
         builder: (context) => PdfViewerScreen(pdfPath: _pdfPath),
       ),
     );
+  }
+
+  void refreshData() {
+    print("subTotal $subTotal");
+    print("tax $tax");
+    print("discount $discount");
+    print("amountPaid $amountPaid");
+
+    if (double.tryParse(discount) != 0) {
+      discounts = ((double.parse(discount) * subTotal) / 100.0);
+    } else {
+      discounts = 0;
+    }
+    print("discounts $discounts");
+
+    double totalAmount1 = (subTotal - discounts);
+
+    print("discountss $totalAmount1");
+
+    if (double.tryParse(tax) != 0) {
+      taxTotal = ((double.parse(tax) * totalAmount1) / 100.0);
+    } else {
+      taxTotal = 0;
+    }
+
+    print("taxTotal $taxTotal");
+
+    totalAmount = totalAmount1 + taxTotal + double.parse(shipping);
+
+    print("totalAmount $totalAmount");
+
+    paidAmount = double.parse(amountPaid);
+    balanceDues = (totalAmount - paidAmount);
+    balanceDue = '$balanceDues';
   }
 }

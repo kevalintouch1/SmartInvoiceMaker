@@ -1,6 +1,8 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'item.dart';
+
 class DatabaseHelper {
   static const String dbName = 'items.db';
 
@@ -31,5 +33,19 @@ class DatabaseHelper {
         total REAL
       )
     ''');
+  }
+
+  Future<List<Item>> getItems() async {
+    final Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('items');
+
+    return List.generate(maps.length, (index) {
+      return Item(
+        id: maps[index]['id'],
+        name: maps[index]['name'],
+        quantity: maps[index]['quantity'],
+        price: maps[index]['price'],
+      );
+    });
   }
 }
